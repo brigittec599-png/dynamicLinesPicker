@@ -15,10 +15,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Dynamic Lines">
 
-  <!-- iOS app icon (you can replace icon-192.png with your own) -->
+  <!-- iOS app icon (replace with your plus icon) -->
   <link rel="apple-touch-icon" href="icon-192.png">
-
-  <!-- Fallback favicon -->
   <link rel="icon" href="icon-192.png">
 
   <style>
@@ -107,6 +105,24 @@
       margin-top: 18px;
     }
 
+    .line-count {
+      margin-bottom: 10px;
+      font-size: 0.95rem;
+    }
+
+    .line-count label {
+      margin-right: 6px;
+    }
+
+    #lineCount {
+      border-radius: 999px;
+      padding: 4px 10px;
+      border: 1px solid #ccc;
+      font-family: "Garamond", serif;
+      font-size: 0.95rem;
+      color: #333;
+    }
+
     .btn {
       border: none;
       border-radius: 999px;
@@ -136,9 +152,13 @@
     .line-output {
       margin-top: 12px;
       text-align: center;
-      font-size: 1.2rem;
+      font-size: 1.1rem;
       font-weight: 600;
       color: #ffffff;
+    }
+
+    .line-output-line {
+      margin: 6px 0;
     }
 
     .line-output span {
@@ -187,8 +207,8 @@
       }
 
       .line-output span {
-        display: block;     /* stack the moves vertically on small screens */
-        margin: 6px auto;
+        display: block;     /* stack the moves vertically per line if needed */
+        margin: 4px auto;
         width: fit-content;
       }
 
@@ -210,7 +230,7 @@
 <!-- Website link at the top -->
 <div class="footer-link">
   <a href="https://www.dynamicflying.com/videos/index.html" target="_blank">
-    Videos
+    Dynamic Flying Video Library
   </a>
 </div>
 
@@ -219,13 +239,25 @@
 <div class="wheels-container" id="wheels"></div>
 
 <div class="controls">
+  <!-- NEW: select how many lines to generate -->
+  <div class="line-count">
+    <label for="lineCount">Lines to generate:</label>
+    <select id="lineCount">
+      <option value="1" selected>1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+      <option value="5">5</option>
+    </select>
+  </div>
+
   <button class="btn" id="spinButton">✨ Spin ✨</button>
   <div class="line-output" id="lineOutput"></div>
 </div>
 
 <!-- Bottom message -->
 <div class="subtitle">
-  Good luck dont die :3
+  Good luck dont die :D
 </div>
 
 <script>
@@ -342,15 +374,22 @@
 
   const spinButton = document.getElementById("spinButton");
   const lineOutput = document.getElementById("lineOutput");
+  const lineCountSelect = document.getElementById("lineCount");
 
   let isSpinning = false;
+
+  function generateRandomLine(enabledPerWheel) {
+    return enabledPerWheel.map(moves =>
+      moves[Math.floor(Math.random() * moves.length)]
+    );
+  }
 
   function spinWheels() {
     if (isSpinning) return; // prevent spam clicks
 
     const enabledPerWheel = [];
 
-    // Collect enabled moves for each wheel; bail if any wheel has none
+    // Collect enabled moves for each wheel; bail if any has none
     for (const wheel of wheelsData) {
       const card = document.querySelector(`.wheel-card[data-wheel-id="${wheel.id}"]`);
       const checkboxes = card.querySelectorAll("input[type='checkbox']");
@@ -368,6 +407,8 @@
       enabledPerWheel.push(enabledMoves);
     }
 
+    const lineCount = parseInt(lineCountSelect.value, 10) || 1;
+
     isSpinning = true;
     spinButton.disabled = true;
 
@@ -378,24 +419,34 @@
     const spinner = setInterval(() => {
       const elapsed = Date.now() - startTime;
 
-      // Show random combo while spinning
-      const tempMoves = enabledPerWheel.map(moves =>
-        moves[Math.floor(Math.random() * moves.length)]
-      );
+      const tempLines = [];
+      for (let i = 0; i < lineCount; i++) {
+        tempLines.push(generateRandomLine(enabledPerWheel));
+      }
 
-      lineOutput.innerHTML =
-        tempMoves.map(m => `<span>${m}</span>`).join("➜");
+      lineOutput.innerHTML = tempLines
+        .map(line =>
+          `<div class="line-output-line">${line
+            .map(m => `<span>${m}</span>`)
+            .join("➜")}</div>`
+        )
+        .join("");
 
       if (elapsed >= spinDuration) {
         clearInterval(spinner);
 
-        // Final actual result
-        const finalMoves = enabledPerWheel.map(moves =>
-          moves[Math.floor(Math.random() * moves.length)]
-        );
+        const finalLines = [];
+        for (let i = 0; i < lineCount; i++) {
+          finalLines.push(generateRandomLine(enabledPerWheel));
+        }
 
-        lineOutput.innerHTML =
-          finalMoves.map(m => `<span>${m}</span>`).join("➜");
+        lineOutput.innerHTML = finalLines
+          .map(line =>
+            `<div class="line-output-line">${line
+              .map(m => `<span>${m}</span>`)
+              .join("➜")}</div>`
+          )
+          .join("");
 
         isSpinning = false;
         spinButton.disabled = false;
@@ -405,7 +456,7 @@
 
   spinButton.addEventListener("click", spinWheels);
 
-  // PWA: register service worker (for offline + app-y feel)
+  // PWA: register service worker
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
       navigator.serviceWorker.register("sw.js").catch(err => {
